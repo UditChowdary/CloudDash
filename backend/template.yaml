@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless personal dashboard backend
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        TASKS_TABLE: !Ref TasksTable
+        HABITS_TABLE: !Ref HabitsTable
+        FINANCES_TABLE: !Ref FinancesTable
+
+Resources:
+  DashboardApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+  TasksTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      TableName: dashboard-tasks
+
+  HabitsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      TableName: dashboard-habits
+
+  FinancesTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      TableName: dashboard-finances
+
+  TasksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: tasks.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TasksTable
+      Events:
+        TasksRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /tasks
+            Method: ANY
+        TasksItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /tasks/{id}
+            Method: ANY
+
+  HabitsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: habits.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HabitsTable
+      Events:
+        HabitsRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /habits
+            Method: ANY
+        HabitsItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /habits/{id}
+            Method: ANY
+
+  FinancesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: finances.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FinancesTable
+      Events:
+        FinancesRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /finances
+            Method: ANY
+        FinancesItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref DashboardApi
+            Path: /finances/{id}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint
+    Value: !Sub "https://${DashboardApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
